@@ -4,6 +4,7 @@ import csv
 import matplotlib.pyplot as plt
 from tensorboard.backend.event_processing import event_accumulator
 import seaborn as sns 
+import pdb
 #import amssymb
 
 def get_data_plot(name_func, path):
@@ -35,21 +36,21 @@ def get_csvdata_plot(index, path):
     with open(path, 'r') as csvfile:
         csvreader = csv.reader(csvfile)
         head_list = next(csvreader)
+        print("length: ", csvreader)
         if index < len(head_list):
           values=[] #empty list
           steps=[] #empty list
           for row in csvreader:
               values.append(float(row[index])) #it is a named_tuple, element['value'] is wrong 
               #steps.append(element.step)  
-          
-          return np.array(range(len(values))), np.array(values), 
+          return np.array(range(1, len(values)+1)), np.array(values)
           
 
 
                     
                
     
-def plot_train_eval(index, paths):
+def plot_train_eval2(index, paths):
 
     
     sns.set_palette('Set2')
@@ -57,14 +58,14 @@ def plot_train_eval(index, paths):
         paths = [paths]
     plt.figure()
     for i, path in enumerate(paths):
-        print(paths)
+        print(path)
         x_scalar, y_scalar = get_csvdata_plot(index, path)
-        plt.plot(x_scalar[1:], y_scalar[1:], colors[i], label=legend[i], alpha=0.5)
+        print(y_scalar)
+        plt.plot(x_scalar[0:], y_scalar[0:], colors[i], label=legend[i], alpha=0.5)
        
-    plt.legend(loc='best', fontsize=15)
+    plt.legend(loc='best', frameon=False, fontsize=15)
     plt.xlabel('# of steps', fontsize=15)
     plt.ylabel(y_names[index], fontsize=15)
-    plt.title("Mnist")
     plt.tight_layout()
     dir_name = os.path.dirname(path) + '/' + path.split('/')[-1].split('.')[0]
     if not os.path.isdir(dir_name):
@@ -73,7 +74,27 @@ def plot_train_eval(index, paths):
                           "{}.png".format(y_names[index])))
     #plt.savefig(y_names[index] + 'attack.png')
     
-    plt.show()
+    # plt.show()
+
+def plot_train_eval(x, results, dir_name, index=0):
+
+    
+    sns.set_palette('Set2')
+    plt.figure()
+    for i, y in enumerate(results):
+        plt.plot(x[0:], y[0:], colors[i], label=legend[i], alpha=0.9)
+       
+    plt.legend(loc='best', frameon=False, fontsize=15)
+    plt.xlabel(r'$\nu$', fontsize=18)
+    plt.ylabel(y_names[index], fontsize=18)
+    plt.tight_layout()
+    if not os.path.isdir(dir_name):
+       os.mkdir(dir_name)
+    plt.savefig(os.path.join(dir_name,
+                          "{}.png".format(y_names[0])))
+    #plt.savefig(y_names[index] + 'attack.png')
+    
+    # plt.show()
     
     
 
@@ -125,15 +146,28 @@ def plot_scatter_norm(name_funcx, name_funcy, name_funcz, path):
 
 scalar_names = ['loss_clean', 'loss_adv', 'loss_incr', 'clean_acc', 'preds_acc', 'eval_x_adv_linf', 'eval_x_adv_l0', 'eval_x_adv_l2', 'eval_x_adv_lnuc']
 
-y_names = ['Clean Loss', 'Adversaial Loss', 'Loss Increment', 'Clean Accuracy (%)', 'Accuracy (%)', r'$L_{\infty}$', r'$L_{0}$', r'$L_{2}$', 'Nuclear Norm']
+y_names = ['IS', 'Clean Loss', 'Adversaial Loss', 'Loss Increment', 'Clean Accuracy (%)', 'Accuracy (%)', r'$L_{\infty}$', r'$L_{0}$', r'$L_{2}$', 'Nuclear Norm']
 
-colors = ['ro-', 'g+--', 'b+-', 'b+-.']
+colors = ['ro-', 'g+--', 'b+-', 'b+-.', 'c+-.']
 
 
-path = ['summary/sum_FW10eps10.0ModelNetmnist.csv', 'summary/sum_FW50eps10.0ModelNetmnist.csv',
-         'summary/sum_pgd40eps0.3ModelNetmnist.csv']
+#path = ['summary/sum_pgd/pgditer7eps0.3SmallCNNmnist.csv', 'summary/sum_pgd/pgditer20eps0.3SmallCNNmnist.csv',
+#         'summary/sum_pgd/pgditer41eps0.3SmallCNNmnist.csv']
 
-legend = ['FW 10', 'FW 50', 'PGD 40']
+#path = ['summary/sum_pgd/pgditer7eps0.3Netmnist_Net.csv', 'summary/sum_pgd/pgditer20eps0.3Netmnist_Net.csv',
+#         'summary/sum_pgd/pgditer41eps0.3Netmnist_Net.csv']
+
+import torch
+
+path = ['summary/sum_rand_cross_FW_ResNet18/FWiter20eps1.0ResNet18data.csv_dict.pt', 'summary/sum_rand_cross_FW_group_ResNet18/FW_groupiter20eps1.0ResNet18data.csv_dict.pt', 'summary/sum_rand_cross_FW_group_ResNet18/FW_groupiter20eps3.0ResNet18data.csv_dict.pt',
+'summary/sum_rand_cross_StrAttack_ResNet18/StrAttackiter10eps-1.0ResNet18data.csv_dict.pt', 'summary/sum_rand_cross_CS_ResNet18/CSiter20eps-1ResNet18data.csv_dict.pt']
+
+legend = [r'FWnucl $\epsilon_{S1} = 1$', r'FWnucl-group $\epsilon_{S1} = 1$', r'FWnucl-group $\epsilon_{S1} = 3$', 'StrAttack', 'CS']
+
+results_sum = []
+for pt in path:
+   pt_f = torch.load(pt)
+   results_sum.append(pt_f['IS_values'])
 
 '''
 scalar_names = ['loss_clean', 'loss_adv']
@@ -156,8 +190,9 @@ plot_scatter_norm('eval_x_adv_lnuc', 'eval_x_adv_linf', 'eval_x_adv_l2', 'pgd40N
 #print(row_index)
 #print(steps)
 
-for i in range(len(scalar_names)):
-    plot_train_eval(i, path)
+plot_train_eval(np.arange(30, 100, 10), results_sum, dir_name = path[0].split('/')[0])
+#for i in range(len(scalar_names)):
+#    plot_train_eval(i, path)
 
 
 
